@@ -1,0 +1,11 @@
+# Byte-compiled Python files
+__pycache__/
+
+# Results directories
+results/
+chunks_audio/
+audio/
+
+# Audio files
+*.wav
+parler_tts_out.wav

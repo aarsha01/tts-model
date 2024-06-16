@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+  
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Emotion Controlled Text-to-Speech</h1>
+        <h2>Craft audio with any vibe and emotion, all at your control.</h2>
+    </header>
+    <div class="header-line"></div>
+    <p>Tips:
+        <ul>
+            <li>Include the term "very clear audio" to generate the highest quality audio, and "very noisy audio" for high levels of background noise</li>
+            <li>Punctuation can be used to control the prosody of the generations, e.g. use commas to add small breaks in speech</li>
+            <li>The remaining speech features (gender, speaking rate, pitch and reverberation) can be controlled directly through the prompt</li>
+        </ul>
+    </p>
+
+ 
+        <main>
+            <div class="input-container">
+                <div class="input-box">
+                    <label for="inputText1">Enter Text</label>
+                    <textarea id="inputText1"></textarea>
+                </div>
+                <div class="input-box">
+                    <label for="inputText2">Specify Emotion/Settings</label>
+                    <textarea id="inputText2"></textarea>
+                </div>
+            </div>
+            <div class="output-container">
+                <button class="play-button" onclick="generateSpeech()">Play Output</button>
+            </div>
+        </main>
+
+        <div class="audio-container">
+            <label for="audioPlayer">Audio Generated: </label>
+            <!-- Loading GIF -->
+            <img src="{{ url_for('static', filename='images/loading.gif') }}" alt="Loading..." class="loading-gif" style="display: none;">
+            
+            <!-- Error image and message -->
+            <div class="error-container" style="display: none;">
+                <img src="{{ url_for('static', filename='images/error.png') }}" alt="Error" class="error-img">
+                <p class="error-message">Error generating audio</p>
+            </div>
+            
+            <audio id="audioPlayer" controls style="display: none;"></audio>
+        </div>
+
+
+    <script>
+        function generateSpeech() {
+            // Show loading GIF immediately
+            let loadingGif = document.querySelector('.loading-gif');
+            loadingGif.style.display = 'block';
+    
+            // Get input values
+            let inputText1Value = document.getElementById('inputText1').value;
+            let inputText2Value = document.getElementById('inputText2').value;
+    
+            // Example: Send data to Flask backend using fetch
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ inputText1: inputText1Value, inputText2: inputText2Value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Audio generated successfully:', data.audio_filename);
+    
+                    // Hide loading GIF and error container
+                    loadingGif.style.display = 'none';
+                    document.querySelector('.error-container').style.display = 'none';
+    
+                    // Show and play the audio
+                    let audioPlayer = document.getElementById('audioPlayer');
+                    audioPlayer.src = '/' + data.audio_filename;
+                    audioPlayer.style.display = 'block';
+                    audioPlayer.play();
+                } else {
+                    console.error('Error:', data.message);
+    
+                    // Hide loading GIF and show error container
+                    loadingGif.style.display = 'none'; 
+                    document.querySelector('.error-container').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+    
+                // Handle fetch error
+                loadingGif.style.display = 'none'; // Hide loading GIF on fetch error
+                document.querySelector('.error-container').style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>
