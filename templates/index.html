@@ -7,8 +7,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
-  
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .popup {
+            display: none;
+            position: fixed;
+            top: 20%;
+            right: 10px;
+            background: rgb(255, 251, 251);
+            border: 1px solid #c0b9b9;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        .popup button.close {
+            position: absolute;
+            top: 2px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -18,91 +39,113 @@
     <div class="header-line"></div>
     <p>Tips:
         <ul>
-            <li>Include the term "very clear audio" to generate the highest quality audio, and "very noisy audio" for high levels of background noise</li>
+            <li>Specify the name of a male speaker (Jerry, Thomas) or female speaker (Talia, Elisabeth) for consistent voices</li>
+            <li>The model can generate in a range of emotions, including: "happy", "confused", "default" (meaning no emotion conveyed), "laughing", "sad", "whisper", "emphasis"</li>
             <li>Punctuation can be used to control the prosody of the generations, e.g. use commas to add small breaks in speech</li>
-            <li>The remaining speech features (gender, speaking rate, pitch and reverberation) can be controlled directly through the prompt</li>
+            <li>To emphasise particular words, wrap them in asterisk (e.g. *you*) and include "emphasis" in the prompt</li>
         </ul>
     </p>
 
- 
-        <main>
-            <div class="input-container">
-                <div class="input-box">
-                    <label for="inputText1">Enter Text</label>
-                    <textarea id="inputText1"></textarea>
-                </div>
-                <div class="input-box">
-                    <label for="inputText2">Specify Emotion/Settings</label>
-                    <textarea id="inputText2"></textarea>
-                </div>
+    <main>
+        <div class="input-container">
+            <div class="input-box">
+                <label for="inputText1">Enter Text</label>
+                <textarea id="inputText1"></textarea>
             </div>
-            <div class="output-container">
-                <button class="play-button" onclick="generateSpeech()">Play Output</button>
+            <div class="input-box">
+                <label for="inputText2">Enter Prompt for Emotion:</label>
+                <textarea id="inputText2"></textarea>
             </div>
-        </main>
-
-        <div class="audio-container">
-            <label for="audioPlayer">Audio Generated: </label>
-            <!-- Loading GIF -->
-            <img src="{{ url_for('static', filename='images/loading.gif') }}" alt="Loading..." class="loading-gif" style="display: none;">
-            
-            <!-- Error image and message -->
-            <div class="error-container" style="display: none;">
-                <img src="{{ url_for('static', filename='images/error.png') }}" alt="Error" class="error-img">
-                <p class="error-message">Error generating audio</p>
-            </div>
-            
-            <audio id="audioPlayer" controls style="display: none;"></audio>
         </div>
+        <div>
+            <label for="longText">Long Text:</label>
+            <input type="checkbox" id="longText" name="options" value="longText" style="margin-right: 10px;">
+            <label for="removeSilenceFromTts">Remove Silences:</label>
+            <input type="checkbox" id="removeSilenceFromTts" name="options" value="removeSilenceFromTts">
+        </div>
+        <div class="output-container">
+            <button class="play-button" onclick="generateSpeech()">Play Output</button>
+        </div>
+    </main>
 
+    <div class="audio-container">
+        <label for="audioPlayer">Audio Generated: </label>
+        <img src="{{ url_for('static', filename='images/loading.gif') }}" alt="Loading..." class="loading-gif" style="display: none; height:70px; width: 70px;">
+        <div class="error-container" style="display: none;">
+            <img src="{{ url_for('static', filename='images/error.png') }}" alt="Error" class="error-img">
+            <p class="error-message">Error generating audio</p>
+        </div>
+        <audio id="audioPlayer" controls style="display: none;"></audio>
+    </div>
+
+    <!-- Popup for generating audio -->
+    <div id="popup" class="popup">
+        <button class="close" onclick="closePopup()">✖</button>
+        <span id="popupMessage">Generating your audio...</span>
+    </div>
 
     <script>
         function generateSpeech() {
-            // Show loading GIF immediately
+            // Show popup with generating message
+            showPopup("Generating your audio...");
+
             let loadingGif = document.querySelector('.loading-gif');
+            let errorContainer = document.querySelector('.error-container');
+            let audioPlayer = document.getElementById('audioPlayer');
+
+            // Show loading GIF and hide error container and audio player at the start
             loadingGif.style.display = 'block';
-    
-            // Get input values
+            errorContainer.style.display = 'none';
+            audioPlayer.style.display = 'none';
+
             let inputText1Value = document.getElementById('inputText1').value;
             let inputText2Value = document.getElementById('inputText2').value;
-    
-            // Example: Send data to Flask backend using fetch
+            let longText = document.getElementById('longText').checked;
+            let removeSilenceFromTts = document.getElementById('removeSilenceFromTts').checked;
+
             fetch('/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ inputText1: inputText1Value, inputText2: inputText2Value })
+                body: JSON.stringify({ inputText1: inputText1Value, inputText2: inputText2Value, longText: longText, removeSilenceFromTts: removeSilenceFromTts })
             })
             .then(response => response.json())
             .then(data => {
+                loadingGif.style.display = 'none';
                 if (data.status === 'success') {
-                    console.log('Audio generated successfully:', data.audio_filename);
-    
-                    // Hide loading GIF and error container
-                    loadingGif.style.display = 'none';
-                    document.querySelector('.error-container').style.display = 'none';
-    
-                    // Show and play the audio
-                    let audioPlayer = document.getElementById('audioPlayer');
-                    audioPlayer.src = '/' + data.audio_filename;
+                    errorContainer.style.display = 'none';
+                    audioPlayer.src = data.audio_filename;
                     audioPlayer.style.display = 'block';
                     audioPlayer.play();
                 } else {
-                    console.error('Error:', data.message);
-    
-                    // Hide loading GIF and show error container
-                    loadingGif.style.display = 'none'; 
-                    document.querySelector('.error-container').style.display = 'block';
+                    errorContainer.style.display = 'block';
+                    // Show popup with error message
+                    showPopup("Error generating audio");
                 }
+                // Hide popup after success or error
+                setTimeout(closePopup, 2000);
             })
             .catch(error => {
-                console.error('Error:', error);
-    
-                // Handle fetch error
-                loadingGif.style.display = 'none'; // Hide loading GIF on fetch error
-                document.querySelector('.error-container').style.display = 'block';
+                loadingGif.style.display = 'none';
+                errorContainer.style.display = 'block';
+                // Show popup with error message
+                showPopup("Error generating audio");
+                // Hide popup after error
+                setTimeout(closePopup, 2000);
             });
+        }
+
+        function showPopup(message) {
+            let popup = document.getElementById('popup');
+            let popupMessage = document.getElementById('popupMessage');
+            popupMessage.textContent = message;
+            popup.style.display = 'block';
+        }
+
+        function closePopup() {
+            let popup = document.getElementById('popup');
+            popup.style.display = 'none';
         }
     </script>
 </body>

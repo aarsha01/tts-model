@@ -1,21 +1,19 @@
 import torch
 from parler_tts import ParlerTTSForConditionalGeneration
-from transformers import AutoTokenizer, set_seed,AutoFeatureExtractor   
+from transformers import AutoTokenizer
 import soundfile as sf
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-model = ParlerTTSForConditionalGeneration.from_pretrained("parler-tts/parler-tts-mini-expresso").to(device)
-tokenizer = AutoTokenizer.from_pretrained("parler-tts/parler-tts-mini-expresso")
-feature_extractor = AutoFeatureExtractor.from_pretrained("parler-tts/parler-tts-mini-expresso")
-prompt = "Why do you make me do these examples? They're *so* generic."
-description = "Thomas speaks moderately slowly in a sad tone with emphasis and high quality audio."
+model = ParlerTTSForConditionalGeneration.from_pretrained("parler-tts/parler_tts_mini_v0.1").to(device)
+tokenizer = AutoTokenizer.from_pretrained("parler-tts/parler_tts_mini_v0.1")
+
+prompt = "Hey, how are you doing today?"
+description = "A female speaker with a slightly low-pitched voice delivers her words quite expressively, in a very confined sounding environment with clear audio quality. She speaks very fast."
 
 input_ids = tokenizer(description, return_tensors="pt").input_ids.to(device)
 prompt_input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
-SAMPLE_RATE = feature_extractor.sampling_rate
-print(SAMPLE_RATE)
-set_seed(42)
-generation = model.generate(input_ids=input_ids, prompt_input_ids=prompt_input_ids, do_sample=True, temperature=1.0)
+
+generation = model.generate(input_ids=input_ids, prompt_input_ids=prompt_input_ids)
 audio_arr = generation.cpu().numpy().squeeze()
 sf.write("parler_tts_out.wav", audio_arr, model.config.sampling_rate)
